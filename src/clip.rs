@@ -27,11 +27,15 @@ pub fn load_image_test() -> Result<(), Box<dyn std::error::Error>> {
 
     let img = (&img / 255.0)?;
 
-    let first_channel = img.get(0)?;
+    let std = Tensor::new(&[0.26862954f32, 0.26130258, 0.27577711], &device)?.reshape((3, 1, 1))?;
+    let mean = Tensor::new(&[0.48145466f32, 0.4578275, 0.40821073], &device)?.reshape((3, 1, 1))?;
 
-    let values = first_channel.flatten_all()?.to_vec1::<f32>()?;
+    let img = img.broadcast_div(&std)?;
+    let img = img.broadcast_sub(&mean)?;
 
-    dbg!(img, values);
+    let img = img.unsqueeze(0)?;
+
+    dbg!(img);
 
     Ok(())
 }
