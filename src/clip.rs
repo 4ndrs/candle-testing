@@ -3,6 +3,7 @@ use std::env;
 use candle_core::{DType, Device, Tensor};
 use candle_nn::VarBuilder;
 use candle_transformers::models::clip;
+use tokenizers::Tokenizer;
 
 pub fn load_image_test() -> Result<(), Box<dyn std::error::Error>> {
     let path = &env::args().collect::<Vec<String>>()[1];
@@ -42,7 +43,13 @@ pub fn load_image_test() -> Result<(), Box<dyn std::error::Error>> {
 
     let model = clip::ClipModel::new(var_builder, &config)?;
 
-    dbg!(img, model);
+    let tokenizer = Tokenizer::from_file("tokenizer.json").map_err(|error| format!("{error}"))?;
+
+    let encoding = tokenizer
+        .encode("anime girl smiling", true)
+        .map_err(|error| format!("{error}"))?;
+
+    dbg!(encoding.get_ids());
 
     Ok(())
 }
