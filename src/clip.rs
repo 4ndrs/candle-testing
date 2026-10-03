@@ -1,6 +1,7 @@
 use std::env;
 
 use candle_core::{DType, Device, Tensor};
+use candle_nn::VarBuilder;
 use candle_transformers::models::clip;
 
 pub fn load_image_test() -> Result<(), Box<dyn std::error::Error>> {
@@ -35,7 +36,13 @@ pub fn load_image_test() -> Result<(), Box<dyn std::error::Error>> {
 
     let img = img.unsqueeze(0)?;
 
-    dbg!(img);
+    let var_builder = unsafe {
+        VarBuilder::from_mmaped_safetensors(&["model.safetensors"], DType::F32, &device)?
+    };
+
+    let model = clip::ClipModel::new(var_builder, &config)?;
+
+    dbg!(img, model);
 
     Ok(())
 }
