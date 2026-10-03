@@ -49,7 +49,13 @@ pub fn load_image_test() -> Result<(), Box<dyn std::error::Error>> {
         .encode("anime girl smiling", true)
         .map_err(|error| format!("{error}"))?;
 
-    dbg!(encoding.get_ids());
+    let ids = encoding.get_ids();
+
+    let input_ids = Tensor::new(ids, &device)?.unsqueeze(0)?;
+
+    let (logits_per_text, logits_per_image) = model.forward(&img, &input_ids)?;
+
+    dbg!(logits_per_text, logits_per_image);
 
     Ok(())
 }
