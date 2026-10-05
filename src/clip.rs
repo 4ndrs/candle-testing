@@ -32,8 +32,8 @@ pub fn load_image_test() -> Result<(), Box<dyn std::error::Error>> {
     let std = Tensor::new(&[0.26862954f32, 0.26130258, 0.27577711], &device)?.reshape((3, 1, 1))?;
     let mean = Tensor::new(&[0.48145466f32, 0.4578275, 0.40821073], &device)?.reshape((3, 1, 1))?;
 
-    let img = img.broadcast_div(&std)?;
     let img = img.broadcast_sub(&mean)?;
+    let img = img.broadcast_div(&std)?;
 
     let img = img.unsqueeze(0)?;
 
@@ -45,17 +45,46 @@ pub fn load_image_test() -> Result<(), Box<dyn std::error::Error>> {
 
     let tokenizer = Tokenizer::from_file("tokenizer.json").map_err(|error| format!("{error}"))?;
 
-    let encoding = tokenizer
-        .encode("anime girl smiling", true)
-        .map_err(|error| format!("{error}"))?;
+    let sentences = vec![
+        "anime girl smiling",
+        "anime boy smiling",
+        "anime girl sad",
+        "dog barking",
+    ];
 
-    let ids = encoding.get_ids();
+    let mut ids: Vec<_> = tokenizer
+        .encode_batch(sentences, true)
+        .map_err(|error| format!("{error}"))?
+        .iter()
+        .map(|encoding| encoding.get_ids().to_owned())
+        .collect();
 
-    let input_ids = Tensor::new(ids, &device)?.unsqueeze(0)?;
+    let vocab = tokenizer.get_vocab(true);
+    let pad_id = vocab.get("<|endoftext|>").ok_or("No pad token")?;
+    let max_len = ids.iter().map(|ids| ids.len()).max().unwrap_or(0);
+
+    let ids: Vec<_> = ids
+        .iter_mut()
+        .map(|id_vec| {
+            let len_diff = max_len - id_vec.len();
+
+            if len_diff > 0 {
+                id_vec.extend(vec![pad_id; len_diff]);
+            }
+
+            id_vec.to_owned()
+        })
+        .collect();
+
+    let input_ids = Tensor::new(ids, &device)?;
+
+    dbg!(&input_ids);
 
     let (logits_per_text, logits_per_image) = model.forward(&img, &input_ids)?;
 
-    dbg!(logits_per_text, logits_per_image);
+    let score = logits_per_image.to_vec2::<f32>()?;
+
+    dbg!(score);
 
     Ok(())
 }
