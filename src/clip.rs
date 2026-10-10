@@ -45,7 +45,7 @@ pub fn load_image_test() -> Result<(), Box<dyn std::error::Error>> {
 
     let tokenizer = Tokenizer::from_file("tokenizer.json").map_err(|error| format!("{error}"))?;
 
-    let sentences = vec![
+    let sentences = [
         "anime girl smiling",
         "anime boy smiling",
         "anime girl sad",
@@ -53,10 +53,10 @@ pub fn load_image_test() -> Result<(), Box<dyn std::error::Error>> {
     ];
 
     let mut ids: Vec<_> = tokenizer
-        .encode_batch(sentences, true)
+        .encode_batch(sentences.to_vec(), true)
         .map_err(|error| format!("{error}"))?
-        .iter()
-        .map(|encoding| encoding.get_ids().to_owned())
+        .into_iter()
+        .map(|encoding| encoding.get_ids().to_vec())
         .collect();
 
     let vocab = tokenizer.get_vocab(true);
@@ -80,11 +80,17 @@ pub fn load_image_test() -> Result<(), Box<dyn std::error::Error>> {
 
     dbg!(&input_ids);
 
-    let (logits_per_text, logits_per_image) = model.forward(&img, &input_ids)?;
+    let (_logits_per_text, logits_per_image) = model.forward(&img, &input_ids)?;
 
-    let score = logits_per_image.to_vec2::<f32>()?;
+    let score = logits_per_image.squeeze(0)?.to_vec1::<f32>()?;
 
-    dbg!(score);
+    let mut scored_sentences: Vec<_> = score.into_iter().zip(sentences).collect();
+
+    scored_sentences.sort_by(|(score_a, _), (score_b, _)| score_b.total_cmp(score_a));
+
+    for (score, sentence) in scored_sentences {
+        println!("{score} {sentence}");
+    }
 
     Ok(())
 }
