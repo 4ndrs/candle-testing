@@ -2,3 +2,4 @@
 model.safetensors
 tokenizer.json
 *session.vim
+.DS_Store
